@@ -21,6 +21,7 @@ jobs:
     permissions:
       contents: write # Required to submit the dependency graph
       issues: write # Required to create issues
+      pull-requests: write
 
     steps:
     - uses: actions/checkout@v4
