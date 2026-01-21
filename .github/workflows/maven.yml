@@ -68,10 +68,15 @@ jobs:
         else
           echo "Le fichier app.log n'a pas pu être créé. Vérifiez le chemin du JAR."
         fi
+    - name: Prepare API test reports directory
+      run: mkdir -p api-test-reports 
     - name: Run API tests (Hurl via Docker)
       run: |
           docker run --rm \
             --add-host=host.docker.internal:host-gateway \
             -v ${{ github.workspace }}:/work \
             ghcr.io/orange-opensource/hurl:latest \
-            --test /work/src/test/java/api
+            --test /work/src/test/java/api \
+            --report-junit /work/api-test-reports/junit.xml \
+            --report-html /work/api-test-reports/report.html \
+            --report-json /work/api-test-reports/report.json \ 
