@@ -37,24 +37,28 @@ jobs:
 
     - name: Run Application and Wait
       run: |
-        # Lancer l'application en arrière-plan et logger dans le répertoire courant
-        nohup java -jar target/formation-cicd-test-tp-03-solution-1.0-SNAPSHOT.jar > app.log 2>&1 &
+        # Vérifier si le JAR existe pour éviter de chercher dans le vide
+        if [ ! -f target/*.jar ]; then
+          echo "ERREUR : Aucun fichier JAR trouvé dans target/"
+          ls -R target/
+          exit 1
+        fi
+
+        # Lancer l'application (le wildcard * évite les erreurs de nom de version)
+        nohup java -jar target/*.jar > app.log 2>&1 &
         
-        # Attendre que l'API soit prête (max 30 secondes)
         for i in {1..30}; do
           if curl -s localhost:8080 > /dev/null; then
             echo "API is ready!"
-            break
+            exit 0
           fi
           echo "Waiting for API... ($i/30)"
           sleep 1
-          
-          if [ $i -eq 30 ]; then
-            echo "API not ready after 30s"
-            cat app.log # Afficher le log pour comprendre le crash
-            exit 1
-          fi
         done
+
+        echo "API not ready after 30s. Logs :"
+        cat app.log
+        exit 1
 
     - name: Debug Logs on Failure
       if: failure()
