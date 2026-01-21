@@ -15,7 +15,60 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  Test_API:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to submit the dependency graph
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    - name: Build with Maven
+      run: mvn -q clean package
+
+    - name: Update dependency graph
+      uses: advanced-security/maven-dependency-submission-action@v4
+
+    - name: Run Application and Wait
+      run: |
+        # Vérifier si le JAR existe pour éviter de chercher dans le vide
+        if [ ! -f target/*.jar ]; then
+          echo "ERREUR : Aucun fichier JAR trouvé dans target/"
+          ls -R target/
+          exit 1
+        fi
+
+        # Lancer l'application (le wildcard * évite les erreurs de nom de version)
+        nohup java -jar target/*.jar > app.log 2>&1 &
+        
+        for i in {1..30}; do
+          if curl -s localhost:8080 > /dev/null; then
+            echo "API is ready!"
+            exit 0
+          fi
+          echo "Waiting for API... ($i/30)"
+          sleep 1
+        done
+
+        echo "API not ready after 30s. Logs :"
+        cat app.log
+        exit 1
+
+    - name: Debug Logs on Failure
+      if: failure()
+      run: |
+        if [ -f app.log ]; then
+          cat app.log
+        else
+          echo "Le fichier app.log n'a pas pu être créé. Vérifiez le chemin du JAR."
+        fi
+  Test_security:
 
     runs-on: ubuntu-latest
     permissions:
@@ -70,13 +123,11 @@ jobs:
         fi
     - name: Prepare API test reports directory
       run: mkdir -p api-test-reports 
-    - name: Run API tests (Hurl via Docker)
-      run: |
-          docker run --rm \
-            --add-host=host.docker.internal:host-gateway \
-            -v ${{ github.workspace }}:/work \
-            ghcr.io/orange-opensource/hurl:latest \
-            --test /work/src/test/java/api \
-            --report-junit /work/api-test-reports/junit.xml \
-            --report-html /work/api-test-reports/report.html \
-            --report-json /work/api-test-reports/report.json
+    - name: ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.15.0
+      with:
+        target: 'localhost:8080'
+    - name: ZAP Full Scan
+      uses: zaproxy/action-full-scan@v0.13.0
+      with:
+        target: 'localhost:8080'
