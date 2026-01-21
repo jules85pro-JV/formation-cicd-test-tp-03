@@ -69,7 +69,17 @@ jobs:
           cat app.log
         else
           echo "Le fichier app.log n'a pas pu être créé. Vérifiez le chemin du JAR."
-        fi
+        fi    - name: Run API tests (Hurl via Docker)
+    - name: Run API tests (Hurl via Docker)
+      run: |
+          docker run --rm \
+            --add-host=host.docker.internal:host-gateway \
+            -v ${{ github.workspace }}:/work \
+            ghcr.io/orange-opensource/hurl:latest \
+            --test /work/src/test/java/api \
+            --report-junit /work/api-test-reports/junit.xml \
+            --report-html /work/api-test-reports/report.html \
+            --report-json /work/api-test-reports/report.json
   Test_security:
 
     runs-on: ubuntu-latest
