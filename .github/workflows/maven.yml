@@ -35,18 +35,32 @@ jobs:
     - name: Update dependency graph
       uses: advanced-security/maven-dependency-submission-action@v4
 
-    - name : Run app
-      run: nohup java -jar target/formation-cicd-test-tp-03-solution-1.0-SNAPSHOT.jar > ../app.log 2>&1 &
-    - name: Wait for API to be ready
+    - name: Run Application and Wait
       run: |
-          for i in {1..30}; do
-            if curl -sSf http://localhost:8080/health > /dev/null; then
-              echo "API is up!"
-              exit 0
-            fi
-            echo "Waiting API..."
-            sleep 2
-          done
-          echo "API not ready"
-          tail -n 200 app.log || true
-          exit 1
+        # Lancer l'application en arrière-plan et logger dans le répertoire courant
+        nohup java -jar target/formation-cicd-test-tp-03-solution-1.0-SNAPSHOT.jar > app.log 2>&1 &
+        
+        # Attendre que l'API soit prête (max 30 secondes)
+        for i in {1..30}; do
+          if curl -s localhost:8080 > /dev/null; then
+            echo "API is ready!"
+            break
+          fi
+          echo "Waiting for API... ($i/30)"
+          sleep 1
+          
+          if [ $i -eq 30 ]; then
+            echo "API not ready after 30s"
+            cat app.log # Afficher le log pour comprendre le crash
+            exit 1
+          fi
+        done
+
+    - name: Debug Logs on Failure
+      if: failure()
+      run: |
+        if [ -f app.log ]; then
+          cat app.log
+        else
+          echo "Le fichier app.log n'a pas pu être créé. Vérifiez le chemin du JAR."
+        fi
