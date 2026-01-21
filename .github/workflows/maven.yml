@@ -134,6 +134,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }} # Utilise le token pour créer l'issue
         target: 'http://localhost:8080/'
         fail_action: 'false'
+        artifact_name: 'api-test-reports-base-scan'
 
     # Cette étape se lance après la Baseline
     - name: ZAP Full Scan
@@ -142,3 +143,4 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         target: 'http://localhost:8080/'
         fail_action: 'false'
+        artifact_name: 'api-test-reports-full-scan'
